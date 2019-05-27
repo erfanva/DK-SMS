@@ -73,7 +73,7 @@ class Route{
             if($basepath!=''&&$basepath!='/'){
               array_shift($matches);// Remove basepath
             }
-            $args = array_push(array($query),$matches);
+            $args = array_merge(array($query),$matches);
             call_user_func_array($route['function'], $args);
   
             $route_match_found = true;
