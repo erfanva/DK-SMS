@@ -44,24 +44,77 @@ function connectDB()
 //     $conn->close();
 //     return true;
 // }
-// function getLogs(){
-//     $conn = connectDB();
-//     if(is_null($conn))
-//         return false;
+function getReport(){
+    $conn = connectDB();
+    if(is_null($conn))
+        return false;
 
-//     $sql = "SELECT id, phone, sent FROM Logs";
-//     $result = $conn->query($sql);
+    $res = new \stdClass();
 
-//     if ($result->num_rows > 0) {
-//         // output data of each row
-//         while($row = $result->fetch_assoc()) {
-//             echo "id: " . $row["id"]. " - phone: " . $row["phone"]. " - sent: " . $row["sent"]. "<br>";
-//         }
-//     } else {
-//         echo "0 results";
-//     }
-//     $conn->close();
-// }
+    $sql = "SELECT phone FROM messages where sent=1";
+    $result = $conn->query($sql);
+    $res->messages_count = $result->num_rows;
+    // echo "messages count = ".$result->num_rows."<br>";
+
+    // echo "most common numbers: <br>";
+    $sql = "SELECT phone, COUNT(*) AS count 
+            FROM messages 
+            GROUP BY phone 
+            ORDER BY count DESC
+            LIMIT 10";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $res->most_common[] = $row;
+            // echo "> phone: ".$row["phone"]." - count: ".$row["count"]."<br>";
+        }
+    }
+
+    $sql = 'SELECT api, COUNT(*) AS count, AVG(sent) AS avg_success FROM sent_log GROUP BY api';
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $res->apis[] = $row;
+            // echo "api: ".$row["api"]." - usage: ".$row["count"]." - error: ".(1 - $row["avg_success"])."<br>";
+        }
+    }
+
+    return json_encode($res);
+    $conn->close();
+}
+function getLogs(){
+    $conn = connectDB();
+    if(is_null($conn))
+        return false;
+
+
+    $res = new \stdClass();
+    
+    $sql = "SELECT id, phone, body, sent FROM messages";
+    $result = $conn->query($sql);
+
+    if ($result->num_rows > 0) {
+        // output data of each row
+        while($mes = $result->fetch_assoc()) {
+            // echo "> id: ".$mes["id"]." - phone: ".$mes["phone"]." - body: ".$mes["body"]." - sent: ".$mes["sent"]."<br>";
+            $sql = 'SELECT api, sent, date FROM sent_log WHERE message_id='.$mes['id'];
+            $mes_result = $conn->query($sql);
+            $message = (object) $mes;
+            if ($mes_result->num_rows > 0) {
+                // output data of each row
+                while($log = $mes_result->fetch_assoc()) {
+                    $message->logs[] = $log;
+                    // echo "api: ".$log["api"]." - sent: ".$log["sent"]." - sent: ".$log["date"]."<br>";
+                }
+            }
+            $res->messages[] = $message;
+        }
+    } else {
+        echo "0 results";
+    }
+    return json_encode($res);
+    $conn->close();
+}
 function saveMessage($phone, $body, $sent)
 {
     $conn = connectDB();
@@ -72,9 +125,10 @@ function saveMessage($phone, $body, $sent)
     VALUES ('$phone', '$body', $sent)";
     print $sql;
     if ($conn->query($sql) === TRUE) {
+        $last_id = $conn->insert_id;
         echo "New record created successfully";
         $conn->close();
-        return $conn->insert_id;
+        return $last_id;
     } else {
         echo "Error: " . $sql . "<br>" . $conn->error;
     }
@@ -107,9 +161,10 @@ function saveLog($message_id, $sent, $api)
     VALUES ($message_id, $sent, $api)";
     print $sql;
     if ($conn->query($sql) === TRUE) {
+        $last_id = $conn->insert_id;
         echo "New record created successfully";
         $conn->close();
-        return $conn->insert_id;
+        return $last_id;
     } else {
         echo "Error: " . $sql . "<br>" . $conn->error;
     }

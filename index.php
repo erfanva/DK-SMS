@@ -6,6 +6,14 @@ Route::add('/',function(){
     // createLogsTable();
     getLogs();
 });
+Route::add('/sms/logs',function(){
+    // createLogsTable();
+    echo getLogs();
+});
+Route::add('/sms/report',function(){
+    // createLogsTable();
+    echo getReport();
+});
 Route::add('/sms/send',function($query){  
     global $config;
     if(isset($query["number"]) && isset($query["body"])){
