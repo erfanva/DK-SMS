@@ -124,14 +124,23 @@ function getReport(){
         }
     }
 
-    $sql = 'SELECT api, COUNT(*) AS count, (1-AVG(sent)) AS avg_error FROM sent_log GROUP BY api';
+    $sql = 'SELECT api, COUNT(*) AS usage_count, (1-AVG(sent)) AS avg_error FROM sent_log GROUP BY api';
     $result = $conn->query($sql);
+    $res->apis_count = $result->num_rows;
+    $res->logs_count = 0;
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $res->apis[] = $row;
+            $res->logs_count += $row["usage_count"];
             // echo "api: ".$row["api"]." - usage: ".$row["count"]." - error: ".(1 - $row["avg_success"])."<br>";
         }
     }
+    // for ($i=0; $i < $res->apis_count; $i++) { 
+    //     $res->apis[$i]["usage"] = $res->apis[$i]["count"] / $res->logs_count;
+    // }
+    // for ($res->apis as $api) {
+    //     $api["usage"] = $api["count"] / $res->logs_count;
+    // }
 
     return json_encode($res);
     $conn->close();
