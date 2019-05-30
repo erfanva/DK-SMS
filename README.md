@@ -1,5 +1,5 @@
 # DK-SMS
-DigiKala Intership's task - You can read it [HERE](https://drive.google.com/file/d/1Su7dvXMlsN6uAevTCeXwBeSP4q8AHf40/view).
+DigiKala Internship's task - You can read it [HERE](https://drive.google.com/file/d/1Su7dvXMlsN6uAevTCeXwBeSP4q8AHf40/view).
 ## Built With
 * Pure PHP
 * MySQl
