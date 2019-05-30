@@ -13,3 +13,15 @@ In this file you set:
 * Sleep time between resending unsent messages (in seconds)
 ## dk-sms.sql
 This file is for initializing your database.
+## Root directory
+You need to change the root directory of project in:
+* .htaccess (change dk with yours)
+```
+RewriteBase /dk/
+```
+* index.php (change dk with yours)
+```
+Route::run('/dk');
+```
+## Logs
+You can get logs in json format with a GET request to dk/sms/logs
