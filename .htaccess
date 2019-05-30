@@ -13,3 +13,10 @@ RewriteCond %{REQUEST_FILENAME} !-d
  
 # Push every request to index.php
 RewriteRule ^(.*)$ index.php [QSA]
+
+<Files "loop.php">  
+  Require all denied
+</Files>
+<Files "index.html">  
+  Require all denied
+</Files>
