@@ -3,7 +3,7 @@ include_once("Func.php");
 $config = include('config.php');
 ignore_user_abort(true);
 set_time_limit(0);
-$resending_checker_file = 'resending';
+$resending_checker_file = $config['resending_checker_file'];
 
 $data = file_get_contents($resending_checker_file);
 if($data == "0"){
