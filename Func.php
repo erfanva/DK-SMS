@@ -44,6 +44,60 @@ function connectDB()
 //     $conn->close();
 //     return true;
 // }
+function getMessages(){
+    $conn = connectDB();
+    if(is_null($conn))
+        return false;
+
+    $res = new \stdClass();
+
+    $sql = "
+        SELECT 
+            phone, 
+            body, 
+            sent
+        FROM
+            messages;";
+    $result = $conn->query($sql);
+    $res->count = $result->num_rows;
+
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $res->messages[] = $row;
+        }
+    }
+
+    return json_encode($res);
+    $conn->close();
+}
+function findWithPhone($phone){
+    $conn = connectDB();
+    if(is_null($conn))
+        return false;
+
+    $res = new \stdClass();
+
+    $sql = "
+        SELECT 
+            phone, 
+            body, 
+            sent
+        FROM
+            messages
+        WHERE
+            phone LIKE '%$phone%';";
+    $result = $conn->query($sql);
+    $res->count = $result->num_rows;
+
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $res->messages[] = $row;
+        }
+    }
+
+    return json_encode($res);
+    $conn->close();
+}
 function getReport(){
     $conn = connectDB();
     if(is_null($conn))
@@ -70,7 +124,7 @@ function getReport(){
         }
     }
 
-    $sql = 'SELECT api, COUNT(*) AS count, AVG(sent) AS avg_success FROM sent_log GROUP BY api';
+    $sql = 'SELECT api, COUNT(*) AS count, (1-AVG(sent)) AS avg_error FROM sent_log GROUP BY api';
     $result = $conn->query($sql);
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {

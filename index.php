@@ -3,16 +3,20 @@ $config = include('config.php');
 include_once('Func.php');
 include_once('Route.php');
 Route::add('/',function(){
-    // createLogsTable();
-    getLogs();
+    include('index.htm');
+    // include('static/index.html');
 });
 Route::add('/sms/logs',function(){
-    // createLogsTable();
     echo getLogs();
 });
 Route::add('/sms/report',function(){
-    // createLogsTable();
     echo getReport();
+});
+Route::add('/sms/get',function($query){ 
+    if(isset($query["number"]))
+        echo findWithPhone($query["number"]);
+    else
+        echo getMessages();
 });
 Route::add('/sms/send',function($query){  
     global $config;
@@ -32,10 +36,6 @@ Route::add('/sms/send',function($query){
             }
         }
     }
-});
-Route::add('/sms/([0-9]*)/(.*)/send',function($query, $number,$s){  
-    print_r($s);
-    print json_encode($query);
 });
 Route::run('/dk');
 ?>
