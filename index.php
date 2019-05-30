@@ -3,9 +3,14 @@ $config = include('config.php');
 include_once('Func.php');
 include_once('Route.php');
 Route::add('/',function(){
-    // include('index.htm');
+    Redirect('report');
+});
+Route::add('/report',function(){
     include('static/index.html');
 });
+// Route::add('/report/logs',function(){
+//     include('static/logs.html');
+// });
 Route::add('/sms/logs',function(){
     echo json_encode(getLogs());
 });
