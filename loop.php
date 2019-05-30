@@ -10,8 +10,8 @@ if($data == "0"){
     file_put_contents($resending_checker_file, time());
     $unsent_messages = getUnsentMessages();
     while ($unsent_messages->count > 0){
-        // Wait 60 seconds
-        sleep(60);
+        // Wait [seconds]
+        sleep($config['sleep_time']);
         foreach ($unsent_messages->results as $message) {
             print_r($message);
             $message_id = $message["id"];
