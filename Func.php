@@ -1,5 +1,8 @@
 <?php
 $config = include('config.php');
+error_reporting(0);
+ini_set('display_errors', 0);
+set_time_limit(1);
 function connectDB()
 {
     global $config;
@@ -18,32 +21,33 @@ function connectDB()
     } 
     return $conn;
 }
-// function createLogsTable()
-// {
-//     $conn = connectDB();
-//     if(is_null($conn))
-//         return false;
+function getUnsentMessages(){
+    $conn = connectDB();
+    if(is_null($conn))
+        return false;
 
-//     // sql to create table
-//     $sql = "CREATE TABLE Logs (
-//             id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, 
-//             phone varchar(12) NOT NULL, 
-//             body TEXT,
-//             sent BOOLEAN,
-//             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-//         )";
+    $res = new \stdClass();
 
-//     if ($conn->query($sql) === TRUE) {
-//         echo "Table Logs created successfully";
-//     } else {
-//         echo "Error creating table: " . $conn->error;
-//         $conn->close();
-//         return false;
-//     }
+    $sql = "
+        SELECT 
+            id, phone, body, sent
+        FROM
+            messages
+        WHERE
+            sent=0";
+    $result = $conn->query($sql);
+    $res->count = $result->num_rows;
 
-//     $conn->close();
-//     return true;
-// }
+    $res->count = $result->num_rows;
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $res->results[] = $row;
+        }
+    }
+
+    return $res;
+    $conn->close();
+}
 function getMessages(){
     $conn = connectDB();
     if(is_null($conn))
@@ -53,21 +57,20 @@ function getMessages(){
 
     $sql = "
         SELECT 
-            phone, 
-            body, 
-            sent
+            phone, body, sent
         FROM
             messages;";
     $result = $conn->query($sql);
     $res->count = $result->num_rows;
 
+    $res->count = $result->num_rows;
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            $res->messages[] = $row;
+            $res->results[] = $row;
         }
     }
 
-    return json_encode($res);
+    return $res;
     $conn->close();
 }
 function findWithPhone($phone){
@@ -79,23 +82,21 @@ function findWithPhone($phone){
 
     $sql = "
         SELECT 
-            phone, 
-            body, 
-            sent
+            phone, body, sent
         FROM
             messages
         WHERE
             phone LIKE '%$phone%';";
     $result = $conn->query($sql);
-    $res->count = $result->num_rows;
 
+    $res->count = $result->num_rows;
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            $res->messages[] = $row;
+            $res->results[] = $row;
         }
     }
 
-    return json_encode($res);
+    return $res;
     $conn->close();
 }
 function getReport(){
@@ -105,44 +106,46 @@ function getReport(){
 
     $res = new \stdClass();
 
-    $sql = "SELECT phone FROM messages where sent=1";
+    //          messages count          //
+    $sql = "SELECT 
+        (SELECT COUNT(id) FROM messages WHERE sent = 0) as remaining,
+        (SELECT COUNT(id) FROM messages where sent = 1) as sent";
     $result = $conn->query($sql);
-    $res->messages_count = $result->num_rows;
-    // echo "messages count = ".$result->num_rows."<br>";
+    $fetch_res = $result->fetch_assoc();
+    $res->sent_count = $fetch_res["sent"];
+    $res->remaining_count = $fetch_res["remaining"];
 
-    // echo "most common numbers: <br>";
+    //          most common          //
     $sql = "SELECT phone, COUNT(*) AS count 
             FROM messages 
             GROUP BY phone 
             ORDER BY count DESC
             LIMIT 10";
     $result = $conn->query($sql);
+
+    $res->most_common = new \stdClass(); 
+    $res->most_common->count = $result->num_rows;
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            $res->most_common[] = $row;
-            // echo "> phone: ".$row["phone"]." - count: ".$row["count"]."<br>";
+            $res->most_common->results[] = $row;
         }
     }
 
+    //          apis          //
     $sql = 'SELECT api, COUNT(*) AS usage_count, (1-AVG(sent)) AS avg_error FROM sent_log GROUP BY api';
     $result = $conn->query($sql);
-    $res->apis_count = $result->num_rows;
+    
+    $res->apis = new \stdClass();   
+    $res->apis->count = $result->num_rows;
     $res->logs_count = 0;
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
-            $res->apis[] = $row;
+            $res->apis->results[] = $row;
             $res->logs_count += $row["usage_count"];
-            // echo "api: ".$row["api"]." - usage: ".$row["count"]." - error: ".(1 - $row["avg_success"])."<br>";
         }
     }
-    // for ($i=0; $i < $res->apis_count; $i++) { 
-    //     $res->apis[$i]["usage"] = $res->apis[$i]["count"] / $res->logs_count;
-    // }
-    // for ($res->apis as $api) {
-    //     $api["usage"] = $api["count"] / $res->logs_count;
-    // }
 
-    return json_encode($res);
+    return $res;
     $conn->close();
 }
 function getLogs(){
@@ -150,32 +153,31 @@ function getLogs(){
     if(is_null($conn))
         return false;
 
-
     $res = new \stdClass();
     
     $sql = "SELECT id, phone, body, sent FROM messages";
     $result = $conn->query($sql);
-
+    $res->count = $result->num_rows;
     if ($result->num_rows > 0) {
-        // output data of each row
-        while($mes = $result->fetch_assoc()) {
-            // echo "> id: ".$mes["id"]." - phone: ".$mes["phone"]." - body: ".$mes["body"]." - sent: ".$mes["sent"]."<br>";
-            $sql = 'SELECT api, sent, date FROM sent_log WHERE message_id='.$mes['id'];
+        // messages
+        while($message = $result->fetch_assoc()) {
+            $sql = 'SELECT api, sent, date FROM sent_log WHERE message_id='.$message['id'];
             $mes_result = $conn->query($sql);
-            $message = (object) $mes;
+            $message = (object) $message;
+            $message->logs = new \stdClass();
+            $message->logs->count = $mes_result->num_rows;
             if ($mes_result->num_rows > 0) {
-                // output data of each row
+                // logs
                 while($log = $mes_result->fetch_assoc()) {
-                    $message->logs[] = $log;
-                    // echo "api: ".$log["api"]." - sent: ".$log["sent"]." - sent: ".$log["date"]."<br>";
+                    $message->logs->results[] = $log;
                 }
             }
             $res->messages[] = $message;
         }
     } else {
-        echo "0 results";
+        // echo "0 results";
     }
-    return json_encode($res);
+    return $res;
     $conn->close();
 }
 function saveMessage($phone, $body, $sent)
@@ -186,14 +188,13 @@ function saveMessage($phone, $body, $sent)
 
     $sql = "INSERT INTO messages (phone, body, sent)
     VALUES ('$phone', '$body', $sent)";
-    print $sql;
     if ($conn->query($sql) === TRUE) {
         $last_id = $conn->insert_id;
-        echo "New record created successfully";
+        // echo "New record created successfully";
         $conn->close();
         return $last_id;
     } else {
-        echo "Error: " . $sql . "<br>" . $conn->error;
+        // echo "Error: " . $sql . "<br>" . $conn->error;
     }
 
     $conn->close();
@@ -207,9 +208,9 @@ function setSentMessage($id)
 
     $sql = "UPDATE messages SET sent=1 WHERE id=$id";
     if ($conn->query($sql) === TRUE) {
-        echo "Record updated successfully";
+        // echo "Record updated successfully";
     } else {
-        echo "Error updating record: " . $conn->error;
+        // echo "Error updating record: " . $conn->error;
     }
     
     $conn->close();
@@ -222,14 +223,13 @@ function saveLog($message_id, $sent, $api)
 
     $sql = "INSERT INTO sent_log (message_id, sent, api)
     VALUES ($message_id, $sent, $api)";
-    print $sql;
     if ($conn->query($sql) === TRUE) {
         $last_id = $conn->insert_id;
-        echo "New record created successfully";
+        // echo "New record created successfully";
         $conn->close();
         return $last_id;
     } else {
-        echo "Error: " . $sql . "<br>" . $conn->error;
+        // echo "Error: " . $sql . "<br>" . $conn->error;
     }
 
     $conn->close();
